@@ -1,6 +1,6 @@
 from data_utils import eval_ece, DATAFILE_DICT
 import numpy as np
-from typing import List, Tuple, Dict, Deque
+from typing import List, Tuple, Dict, Deque, Iterable
 from sklearn.metrics import confusion_matrix
 from collections import deque
 from sklearn.utils import shuffle 
@@ -39,10 +39,22 @@ class Dataset:
         if group_method == 'predicted_class':
             self.categories = self.predictions
             self.num_groups = self.num_classes
-        elif group_method == 'score':
+        elif group_method == 'score_equal_width':
             self.num_groups = 10
             bins = np.linspace(0, 1, self.num_groups + 1)
-            self.categories = np.digitize(np.max(self.scores,axis=-1), bins[1:-1])
+            self.categories = np.digitize(np.max(self.scores,axis=-1), bins[1:-1]).astype(int)
+        elif group_method == 'score_equal_size':
+            self.num_groups = 10
+            bin_size = self.__len__() // self.num_groups
+            self.categories = np.zeros((self.__len__(),)).astype(int)
+            ranked = np.argsort(np.max(self.scores,axis=-1))
+            for idx in range(self.num_groups):
+                start = idx * bin_size
+                if idx == self.num_groups - 1:
+                    end = -1
+                else:
+                    end = (idx+1) * bin_size
+                self.categories[ranked[start : end]] = idx
         self._add_group_information()
     
     def _add_group_information(self) -> None:
@@ -67,6 +79,13 @@ class Dataset:
         self.scores = self.scores[shuffle_ids]
         self.indices = self.indices[shuffle_ids]
         self.categories = self.categories[shuffle_ids]
+        
+    def get_labeled_datapoint(self, sample_index):
+        pos = self.indices.tolist().index(sample_index)
+        return {'index': sample_index, # might be used when logits need to be queries from a different file
+                 'label': self.labels[pos], 
+                 'score': self.scores[pos],
+                'category': self.categories[pos]}
 
     @classmethod
     def load_from_text(cls, dataset_name: str) -> 'Dataset':
@@ -81,57 +100,76 @@ class Dataset:
         return cls(labels, scores, dataset_name)
 
     @property
-    def confusion_probs(self) -> np.ndarray:
+    def confusion_probs(self) -> np.ndarray:# use labels
         arr = confusion_matrix(self.labels, self.predictions).transpose()
         return arr / arr.sum(axis=-1, keepdims=True)
 
     @property
     def confusion_prior(self) -> np.ndarray:
-        arr = np.zeros((self.num_classes, self.num_classes))
-        for i in range(self.num_classes):
+        arr = np.zeros((self.num_groups, self.num_groups))
+        for i in range(self.num_groups):
             arr[i] = self.scores[self.predictions == i].sum(axis=0) / sum(self.predictions == i)
         return arr
 
     @property
     def predictions(self) -> np.ndarray:
         return np.argmax(self.scores, axis=-1)
+
     
+class SuperclassDataset(Dataset):
+    def __init__(self,
+                 labels: np.ndarray,
+                 scores: np.ndarray,
+                 dataset_name: str,
+                 superclass_lookup: Dict[int, int]) -> None:
+        self.labels = labels
+        self.scores = scores
+        self.indices = np.arange(labels.shape[0])
+        self._add_information(dataset_name)
+        
+        self.superclass_lookup = superclass_lookup
+        self.reverse_lookup = defaultdict(list)
+        for key, value in self.superclass_lookup.items():
+            self.reverse_lookup[value].append(key)
+
+    def generate(self) -> Iterable[Tuple[int, int]]:
+        for label, prediction in zip(self.labels, self.predictions):
+            if label == prediction:
+                entry = 0
+            elif self.superclass_lookup[label] == self.superclass_lookup[prediction]:
+                entry = 1
+            else:
+                entry = 2
+            yield prediction, entry
+
+    @classmethod
+    def load_from_text(cls, dataset_name: str, superclass_lookup: Dict[int, int]) -> 'Dataset':
+        fname = DATAFILE_DICT[dataset_name]
+        array = np.genfromtxt(fname)
+        labels = array[:, 0].astype(np.int)
+        scores = array[:, 1:].astype(np.float)
+        return cls(labels, scores, dataset_name, superclass_lookup)    
     
+    @property
+    def confusion_probs(self) -> np.ndarray:
+        arr = np.zeros((self.num_groups, 3))
+        for prediction, entry in self.generate():
+            arr[prediction, entry] += 1
+        return arr / arr.sum(axis=-1, keepdims=True)
 
-# def get_ground_truth(categories: List[int], observations: List[bool], confidences: List[float], num_classes: int,
-#                      metric: str, mode: str, topk: int = 1) -> np.ndarray:
-
-#     if metric == 'accuracy':
-#         metric_val = get_accuracy_k(categories, observations, num_classes)
-#     elif metric == 'calibration_error':
-#         metric_val = get_ece_k(categories, observations, confidences, num_classes, num_bins=10)
-#     output = np.zeros((num_classes,), dtype=np.bool_)
-
-#     if mode == 'max':
-#         indices = metric_val.argsort()[-topk:]
-#     else:
-#         indices = metric_val.argsort()[:topk]
-#     output[indices] = 1
-#     return output
-
-
-# def get_bayesian_ground_truth(categories: List[int], observations: List[bool], confidences: List[float],
-#                               num_classes: int,
-#                               metric: str, mode: str, topk: int = 1, pseudocount: int = 1, prior=None) -> np.ndarray:
-
-#     if metric == 'accuracy':
-#         model = BetaBernoulli(num_classes, prior=prior)
-#         model.update_batch(confidences, observations)
-#     elif metric == 'calibration_error':
-#         model = ClasswiseEce(num_classes, num_bins=10, pseudocount=pseudocount)
-#         model.update_batch(categories, observations, confidences)
-#     metric_val = model.eval
-
-#     output = np.zeros((num_classes,), dtype=np.bool_)
-#     if mode == 'max':
-#         indices = metric_val.argsort()[-topk:]
-#     else:
-#         indices = metric_val.argsort()[:topk]
-#     output[indices] = 1
-
-#     return output
+    @property
+    def confusion_prior(self) -> np.ndarray:
+        arr = np.zeros((self.num_groups, 3))
+        for class_idx in range(self.num_groups):
+            mean_scores = self.scores[self.predictions == class_idx].mean(axis=0)
+            # Correct prediction prob
+            arr[class_idx, 0] = mean_scores[class_idx]
+            # Within superclass confusion prob
+            superclass_idx = self.superclass_lookup[class_idx]
+            for other_class_idx in self.reverse_lookup[superclass_idx]:
+                if other_class_idx == class_idx:
+                    continue
+                arr[class_idx, 1] += mean_scores[other_class_idx]
+        # Law of total probability
+        arr[:, 2] = 1 - arr[:, 0] - arr[:, 1]
+        return arr

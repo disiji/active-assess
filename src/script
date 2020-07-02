@@ -1,0 +1,47 @@
+### Assess with Dirichlet Multinomial
+# Confusion Matrix
+
+for run_start in {0..100..5}
+do
+    run_end=$((run_start+5))
+    python assess_confusion_matrix.py --dataset_name cifar100 --superclass False --run_start $run_start --run_end $run_end --pseudocount 1 &
+done
+
+
+
+### Assess with Beta Bernoulli
+declare -a DatasetNames=("cifar100" "dbpedia" "20newsgroup" "svhn" "imagenet")
+declare -a GroupMethod=("predicted_class" "score_equal_width" "score_equal_size")
+declare -a MetricList=("groupwise_accuracy" "least_accurate" "most_accurate")
+for metric in "${MetricList[@]}"
+do
+    for group_method in "${GroupMethod[@]}"
+    do
+        for dataset_name in "${DatasetNames[@]}"
+        do
+            python assess_accuracy.py --dataset_name $dataset_name \
+                                      --group_method $group_method \
+                                      --metric $metric \
+                                      --pseudocount 2 &
+        done
+    done
+done
+
+
+
+declare -a DatasetNames=("cifar100")
+declare -a GroupMethod=("predicted_class" "score_equal_width" "score_equal_size")
+declare -a MetricList=("least_accurate" "most_accurate")
+for metric in "${MetricList[@]}"
+do
+    for group_method in "${GroupMethod[@]}"
+    do
+        for dataset_name in "${DatasetNames[@]}"
+        do
+            python assess_accuracy.py --dataset_name $dataset_name \
+                                      --group_method $group_method \
+                                      --metric $metric \
+                                      --pseudocount 2 &
+        done
+    done
+done
