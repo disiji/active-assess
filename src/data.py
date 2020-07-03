@@ -100,7 +100,7 @@ class Dataset:
         return cls(labels, scores, dataset_name)
 
     @property
-    def confusion_probs(self) -> np.ndarray:# use labels
+    def confusion_probs(self) -> np.ndarray:# use labels, grouped by predicted class
         arr = confusion_matrix(self.labels, self.predictions).transpose()
         return arr / arr.sum(axis=-1, keepdims=True)
 
@@ -131,6 +131,7 @@ class SuperclassDataset(Dataset):
         self.reverse_lookup = defaultdict(list)
         for key, value in self.superclass_lookup.items():
             self.reverse_lookup[value].append(key)
+        self.group()
 
     def generate(self) -> Iterable[Tuple[int, int]]:
         for label, prediction in zip(self.labels, self.predictions):
@@ -141,6 +142,17 @@ class SuperclassDataset(Dataset):
             else:
                 entry = 2
             yield prediction, entry
+            
+    def group(self) -> None:
+        # group_method == superclass
+        if group_method == 'predicted_class':
+            self.categories = self.predictions
+            self.num_groups = self.num_classes
+        elif group_method == 'score_equal_width':
+            self.num_groups = 10
+            bins = np.linspace(0, 1, self.num_groups + 1)
+            self.categories = np.digitize(np.max(self.scores,axis=-1), bins[1:-1]).astype(int)
+        self._add_group_information()
 
     @classmethod
     def load_from_text(cls, dataset_name: str, superclass_lookup: Dict[int, int]) -> 'Dataset':

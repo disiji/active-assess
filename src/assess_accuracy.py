@@ -58,14 +58,14 @@ def main():
     dataset = Dataset.load_from_text(args.dataset_name)
     dataset.group(group_method = args.group_method)
     
-    UNIFORM_PRIOR = np.ones((dataset.num_groups, 2)) / 2 * args.pseudocount
-    INFORMED_PRIOR = np.array([dataset.confidence_k, 1 - dataset.confidence_k]).T * args.pseudocount
-    INFORMED_PRIOR[np.isnan(INFORMED_PRIOR)] = 1.0 / 2 * args.pseudocount
+    UNIFORM_PRIOR = np.ones((dataset.num_groups, 2)) / 2
+    INFORMED_PRIOR = np.array([dataset.confidence_k, 1 - dataset.confidence_k]).T 
+    INFORMED_PRIOR[np.isnan(INFORMED_PRIOR)] = 1.0 / 2 
     config_dict = {
         'random_arm': [UNIFORM_PRIOR * 1e-6, 'random', False],
         'random_data': [UNIFORM_PRIOR * 1e-6, 'random', True],
-        'ts_uniform': [UNIFORM_PRIOR, 'ts', None], 
-        'ts_informed': [INFORMED_PRIOR, 'ts', None]}
+        'ts_uniform': [UNIFORM_PRIOR * args.pseudocount, 'ts', None], 
+        'ts_informed': [INFORMED_PRIOR * args.pseudocount, 'ts', None]}
         
     for method in method_list:
         samples[method] = np.zeros((RUNS, dataset.__len__()), dtype=np.int) 
@@ -92,7 +92,7 @@ if __name__ == '__main__':
     parser.add_argument('dataset_name', type=str, default='cifar100')
     parser.add_argument('group_method', type=str, default='predicted_class')
     parser.add_argument('metric', type=str, default='groupwise_accuracy')
-    parser.add_argument('pseudocount', type=int, default=2)
+    parser.add_argument('pseudocount', type=float, default=2)
     
     args, _ = parser.parse_known_args()
     main()

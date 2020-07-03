@@ -29,9 +29,17 @@ done
 
 
 
-declare -a DatasetNames=("cifar100")
+### working on
+python assess_confusion_matrix.py --dataset_name cifar100 --superclass True --run_start 0 --run_end 1 --pseudocount 1 
+
+
+
+
+("cifar100" "dbpedia" "20newsgroup" "svhn" "imagenet")
+
+declare -a DatasetNames=("cifar100" "dbpedia" "20newsgroup" "svhn"  )
 declare -a GroupMethod=("predicted_class" "score_equal_width" "score_equal_size")
-declare -a MetricList=("least_accurate" "most_accurate")
+declare -a MetricList=("groupwise_accuracy" "least_accurate" "most_accurate")
 for metric in "${MetricList[@]}"
 do
     for group_method in "${GroupMethod[@]}"
@@ -41,7 +49,13 @@ do
             python assess_accuracy.py --dataset_name $dataset_name \
                                       --group_method $group_method \
                                       --metric $metric \
-                                      --pseudocount 2 &
+                                      --pseudocount 0.1 &
         done
     done
 done
+
+
+
+- reward for ece resutls
+- superclass
+- extreme class bug
