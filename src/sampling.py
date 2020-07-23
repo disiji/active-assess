@@ -17,14 +17,23 @@ def random_sampling(deques: List[deque],
         if len(deques[category]) != 0:
             return category
         
-
+        
 def thompson_sampling(deques: List[deque],
                       reward: List[float], #(num_groups, )
+                      topk: int = 1, 
                      **kwargs) -> Union[int, List[int]]:
     ranked = np.argsort(reward)[::-1] # select the one with highest reward
+    categories = []
     for category in ranked:
         if len(deques[category]) != 0:
-            return category
+            categories.append(category)
+        if len(categories) == topk:
+            break
+    if topk == 1:
+        return categories[0]
+    else:
+        return categories
+        
 
 SAMPLE_CATEGORY = {
     'random': random_sampling,

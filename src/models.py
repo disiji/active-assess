@@ -87,11 +87,26 @@ class BetaBernoulli(Model):
             elif reward_type == 'most_accurate':
                 return theta_hat
             
+            elif reward_type == 'most_biased':
+                # maybe not 
+                raise ValueError
+            
+            elif reward_type == 'least_biased':
+                # maybe not 
+                raise ValueError
+            
+            elif reward_type == 'ece':
+                # low variance estimation of ECE
+                var_plus_1 = beta.var(self._params[:, 0]+1, self._params[:, 1])
+                var_plus_0 = beta.var(self._params[:, 0], self._params[:, 1]+1)
+                E_var =  var_plus_1 * theta_hat + var_plus_0 * (1-theta_hat)
+                return (np.sqrt(self.variance - E_var)) * self._weight ** 2              
+                
             elif reward_type == 'groupwise_accuracy':
                 var_plus_1 = beta.var(self._params[:, 0]+1, self._params[:, 1])
                 var_plus_0 = beta.var(self._params[:, 0], self._params[:, 1]+1)
                 E_var =  var_plus_1 * theta_hat + var_plus_0 * (1-theta_hat)
-                return (self.variance - E_var) * self._weight ** 2
+                return (self.variance - E_var) * self._weight
             
             elif reward_type == 'difference':
                 if group0 is None or group1 is None:
@@ -193,20 +208,36 @@ class DirichletMultinomial(Model):
     def mle(self) -> np.ndarray:
         params = (self._alphas - self._prior)
         z = params.sum(axis=-1, keepdims=True)
-        return params / z        
+        return params / z   
+    
+    def _compute_dirichlet_variance(self, alphas):
+        # alphas: (k, )
+        alpha0 = alphas.sum()
+        var = alphas * (alpha0 - alphas) / (alpha0 * alpha0 * (alpha0+1))
+        return var.sum()
     
     @property
     def entropy(self) -> np.ndarray:
         return np.array([dirichlet.entropy(self._alphas[i] + 1e-6) for i in range(self._k)])
     
+    @property
+    def variance(self) -> np.ndarray:
+        return np.array([self._compute_dirichlet_variance(self._alphas[i] + 1e-6) for i in range(self._k)])
+    
     def reward(self, reward_type, group0=None, group1=None) -> np.ndarray:
         def r(alpha_hat):
             if reward_type == 'confusion_matrix':
-                new_entropy = np.zeros(alpha_hat.shape)
+#                 new_entropy = np.zeros(alpha_hat.shape)
+#                 for j in range(self._k): # true class
+#                     params = np.copy(alpha_hat)
+#                     params[:,j] += 1
+#                     new_entropy[:,j] = np.array([dirichlet.entropy(params[i] + 1e-6) for i in range(self._k)])
+#                 E_entropy =  (new_entropy * alpha_hat).sum(axis=-1)
+                new_var = np.zeros(alpha_hat.shape)
                 for j in range(self._k): # true class
                     params = np.copy(alpha_hat)
                     params[:,j] += 1
-                    new_entropy[:,j] = np.array([dirichlet.entropy(params[i] + 1e-6) for i in range(self._k)])
-                E_entropy =  (new_entropy * alpha_hat).sum(axis=-1)
-                return (self.entropy - E_entropy) * self._weight 
+                    new_var[:,j] = np.array([self._compute_dirichlet_variance(params[i] + 1e-6) for i in range(self._k)])
+                E_var = (new_var * alpha_hat).sum(axis=-1)
+                return (self.variance - E_var) * self._weight
         return r(self.sample())

@@ -2,7 +2,7 @@ from data_utils import eval_ece, DATAFILE_DICT
 import numpy as np
 from typing import List, Tuple, Dict, Deque, Iterable
 from sklearn.metrics import confusion_matrix
-from collections import deque
+from collections import deque, defaultdict
 from sklearn.utils import shuffle 
 
 NUM_BINS = 20
@@ -131,8 +131,38 @@ class SuperclassDataset(Dataset):
         self.reverse_lookup = defaultdict(list)
         for key, value in self.superclass_lookup.items():
             self.reverse_lookup[value].append(key)
-        self.group()
+        # group with superclass
+        self.categories = np.array([self.superclass_lookup[class_idx] for class_idx in self.predictions])
+        self.num_groups = len(self.reverse_lookup)
+        # compute superclass scores
+        self.superclass_scores = np.zeros((labels.shape[0], self.num_groups))
+        for superclass_idx in range(self.num_groups):
+            self.superclass_scores[:, superclass_idx] = np.sum(self.scores[:, self.reverse_lookup[superclass_idx]], axis=1)
+        # compute superclass scores
+        self._add_group_information()
 
+    def enqueue(self) -> List[Deque[int]]:
+        # group by self.categories
+        queues = [deque() for _ in range(self.num_groups)]
+        for index, label, superclass_score, category in zip(self.indices, self.labels, self.superclass_scores, self.categories):
+            queues[self.superclass_lookup[category]].append({
+                                'index': index, # might be used when logits need to be queries from a different file
+                                'label': self.superclass_lookup[label], 
+                                'score': superclass_score})
+        return queues
+        
+    def shuffle(self, random_state=0) -> None:
+        # To make sure the rows still align we shuffle an array of indices, and use these to
+        # re-order the dataset's attributes.
+        # Need to group before shuffle
+        shuffle_ids = np.arange(self.labels.shape[0])
+        shuffle_ids = shuffle(shuffle_ids, random_state=random_state)
+        self.labels = self.labels[shuffle_ids]
+        self.scores = self.scores[shuffle_ids]
+        self.indices = self.indices[shuffle_ids]
+        self.categories = self.categories[shuffle_ids]
+        self.superclass_scores = self.superclass_scores[shuffle_ids]
+        
     def generate(self) -> Iterable[Tuple[int, int]]:
         for label, prediction in zip(self.labels, self.predictions):
             if label == prediction:
@@ -144,15 +174,7 @@ class SuperclassDataset(Dataset):
             yield prediction, entry
             
     def group(self) -> None:
-        # group_method == superclass
-        if group_method == 'predicted_class':
-            self.categories = self.predictions
-            self.num_groups = self.num_classes
-        elif group_method == 'score_equal_width':
-            self.num_groups = 10
-            bins = np.linspace(0, 1, self.num_groups + 1)
-            self.categories = np.digitize(np.max(self.scores,axis=-1), bins[1:-1]).astype(int)
-        self._add_group_information()
+        return
 
     @classmethod
     def load_from_text(cls, dataset_name: str, superclass_lookup: Dict[int, int]) -> 'Dataset':
@@ -164,24 +186,14 @@ class SuperclassDataset(Dataset):
     
     @property
     def confusion_probs(self) -> np.ndarray:
-        arr = np.zeros((self.num_groups, 3))
-        for prediction, entry in self.generate():
-            arr[prediction, entry] += 1
+        arr = confusion_matrix([self.superclass_lookup[i] for i in self.labels], 
+                               [self.superclass_lookup[i] for i in self.predictions]).transpose()
         return arr / arr.sum(axis=-1, keepdims=True)
+
 
     @property
     def confusion_prior(self) -> np.ndarray:
-        arr = np.zeros((self.num_groups, 3))
-        for class_idx in range(self.num_groups):
-            mean_scores = self.scores[self.predictions == class_idx].mean(axis=0)
-            # Correct prediction prob
-            arr[class_idx, 0] = mean_scores[class_idx]
-            # Within superclass confusion prob
-            superclass_idx = self.superclass_lookup[class_idx]
-            for other_class_idx in self.reverse_lookup[superclass_idx]:
-                if other_class_idx == class_idx:
-                    continue
-                arr[class_idx, 1] += mean_scores[other_class_idx]
-        # Law of total probability
-        arr[:, 2] = 1 - arr[:, 0] - arr[:, 1]
+        arr = np.zeros((self.num_groups, self.num_groups))
+        for i in range(self.num_groups):
+            arr[i] = self.superclass_scores[self.categories == i].sum(axis=0) / sum(self.categories == i)
         return arr

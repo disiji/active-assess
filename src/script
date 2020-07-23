@@ -1,61 +1,97 @@
-### Assess with Dirichlet Multinomial
+##############################  SAMPLE  ##############################
+############ Assess with Dirichlet Multinomial  ############
 # Confusion Matrix
-
-for run_start in {0..100..5}
+declare -a DatasetNames=("cifar100" "dbpedia" "20newsgroup" "svhn")
+for dataset_name in "${DatasetNames[@]}"
 do
-    run_end=$((run_start+5))
-    python assess_confusion_matrix.py --dataset_name cifar100 --superclass False --run_start $run_start --run_end $run_end --pseudocount 1 &
+    for run_start in {0..100..10}
+    do
+        run_end=$((run_start+10))
+        python assess_confusion_matrix.py --dataset_name $dataset_name --superclass False --run_start $run_start --run_end $run_end --pseudocount 1 --topk 1 &
+    done
+done
+
+############ Assess with Beta Bernoulli ###############
+declare -a DatasetNames=("cifar100" "dbpedia" "20newsgroup" "svhn" "imagenet")
+declare -a GroupMethod=("predicted_class")
+declare -a MetricList=("least_accurate" "most_accurate")
+for metric in "${MetricList[@]}"
+do
+    for group_method in "${GroupMethod[@]}"
+    do
+        for dataset_name in "${DatasetNames[@]}"
+        do
+            for topk in {1,3,10}
+            do
+                python assess_accuracy.py --dataset_name $dataset_name \
+                                          --group_method $group_method \
+                                          --metric $metric \
+                                          --pseudocount 2 \
+                                          --topk $topk&
+            done
+        done
+    done
+done
+declare -a GroupMethod=("predicted_class" "score_equal_width" "score_equal_size")
+declare -a MetricList=("groupwise_accuracy")
+for metric in "${MetricList[@]}"
+do
+    for group_method in "${GroupMethod[@]}"
+    do
+        for dataset_name in "${DatasetNames[@]}"
+        do
+            python assess_accuracy.py --dataset_name $dataset_name \
+                                      --group_method $group_method \
+                                      --metric $metric \
+                                      --pseudocount 2 \
+                                      --topk 1&
+        done
+    done
+done
+declare -a DatasetNames=("cifar100" "dbpedia" "20newsgroup" "svhn")
+for dataset_name in "${DatasetNames[@]}"
+do
+    python assess_difference.py --dataset_name $dataset_name \
+                              --group_method predicted_class \
+                              --pseudocount 1 &
 done
 
 
 
-### Assess with Beta Bernoulli
+##############################  EVAL  ##############################
+declare -a DatasetNames=("cifar100" "dbpedia" "20newsgroup" "svhn" "imagenet")
+declare -a MetricList=("least_accurate" "most_accurate")
+declare -a TopkList=("True" "False")
+for dataset_name in "${DatasetNames[@]}"
+do
+    for metric in "${MetricList[@]}"
+    do
+        for topk in "${TopkList[@]}"
+        do
+            python eval_ts_accuracy.py --dataset_name $dataset_name \
+                                       --metric $metric \
+                                       --group_method predicted_class \
+                                       --pseudocount 2 \
+                                       --topk $topk &
+        done
+    done
+done
+
+
 declare -a DatasetNames=("cifar100" "dbpedia" "20newsgroup" "svhn" "imagenet")
 declare -a GroupMethod=("predicted_class" "score_equal_width" "score_equal_size")
-declare -a MetricList=("groupwise_accuracy" "least_accurate" "most_accurate")
-for metric in "${MetricList[@]}"
+declare -a MetricList=("groupwise_accuracy")
+for dataset_name in "${DatasetNames[@]}"
 do
-    for group_method in "${GroupMethod[@]}"
+    for metric in "${MetricList[@]}"
     do
-        for dataset_name in "${DatasetNames[@]}"
+        for group_method in "${GroupMethod[@]}"
         do
-            python assess_accuracy.py --dataset_name $dataset_name \
-                                      --group_method $group_method \
-                                      --metric $metric \
-                                      --pseudocount 2 &
+            python eval_ts_accuracy.py --dataset_name $dataset_name \
+                                           --metric $metric \
+                                           --group_method $group_method \
+                                           --pseudocount 2 \
+                                           --topk False &
         done
     done
 done
-
-
-
-### working on
-python assess_confusion_matrix.py --dataset_name cifar100 --superclass True --run_start 0 --run_end 1 --pseudocount 1 
-
-
-
-
-("cifar100" "dbpedia" "20newsgroup" "svhn" "imagenet")
-
-declare -a DatasetNames=("cifar100" "dbpedia" "20newsgroup" "svhn"  )
-declare -a GroupMethod=("predicted_class" "score_equal_width" "score_equal_size")
-declare -a MetricList=("groupwise_accuracy" "least_accurate" "most_accurate")
-for metric in "${MetricList[@]}"
-do
-    for group_method in "${GroupMethod[@]}"
-    do
-        for dataset_name in "${DatasetNames[@]}"
-        do
-            python assess_accuracy.py --dataset_name $dataset_name \
-                                      --group_method $group_method \
-                                      --metric $metric \
-                                      --pseudocount 0.1 &
-        done
-    done
-done
-
-
-
-- reward for ece resutls
-- superclass
-- extreme class bug

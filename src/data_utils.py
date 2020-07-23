@@ -70,6 +70,7 @@ DATASET_NAMES = {
     'svhn': 'SVHN',
     '20newsgroup': '20 Newsgroups',
     'dbpedia': 'DBpedia',
+    'cifar100_superclass': 'CIFAR-100, Superclass'
 }
 TOPK_DICT = {'cifar100': 10,
              'imagenet': 10,
@@ -132,8 +133,13 @@ CIFAR100_REVERSE_SUPERCLASS_LOOKUP = {
 CIFAR100_SUPERCLASS_LOOKUP = {class_: superclass for superclass, class_list in
                               CIFAR100_REVERSE_SUPERCLASS_LOOKUP.items() for class_ in
                               class_list}
-
-
+tmp = {}
+for i in CIFAR100_SUPERCLASS_LOOKUP:
+    j = CIFAR100_SUPERCLASS_LOOKUP[i]
+    i = CIFAR100_CLASSES.index(i)
+    j = CIFAR100_SUPERCLASSES.index(j)
+    tmp[i] = j
+CIFAR100_SUPERCLASS_LOOKUP = tmp
 ############################################################################
 import warnings
 warnings.filterwarnings("ignore")
