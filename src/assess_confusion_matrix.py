@@ -6,12 +6,8 @@ from typing import List, Dict, Tuple, Union
 from data import Dataset, SuperclassDataset
 from data_utils import *
 from sampling import *
-from models import BetaBernoulli
-import matplotlib.pyplot as plt
 import numpy as np
 from tqdm import tqdm
-import matplotlib;matplotlib.rcParams['font.size'] = 10
-import matplotlib;matplotlib.rcParams['font.family'] = 'serif'
 
 LOG_FREQ = 10
 output_dir = pathlib.Path("../output/confusion_matrix")
@@ -59,13 +55,12 @@ def main():
         dataset.group(group_method = group_method)
     if not (output_dir / experiment_name).is_dir():
         (output_dir / experiment_name).mkdir()
-    deques = dataset.enqueue()
     budget = dataset.__len__()
     costs = np.ones((dataset.num_groups, dataset.num_groups))
     # np.fill_diagonal(costs, 0)
     
     UNIFORM_PRIOR = np.ones((dataset.num_groups, dataset.num_groups)) / dataset.num_groups 
-    INFORMED_PRIOR = dataset.confusion_prior
+    INFORMED_PRIOR = dataset.confusion_prior()
     method_list = ['random_arm', 'random_data', 'random_arm_informed', 'random_data_informed', 'ts_uniform', 
                    'ts_informed']
     config_dict = {

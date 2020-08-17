@@ -70,7 +70,7 @@ DATASET_NAMES = {
     'svhn': 'SVHN',
     '20newsgroup': '20 Newsgroups',
     'dbpedia': 'DBpedia',
-    'cifar100_superclass': 'CIFAR-100, Superclass'
+    'superclass_cifar100': 'CIFAR-100, Superclass'
 }
 TOPK_DICT = {'cifar100': 10,
              'imagenet': 10,

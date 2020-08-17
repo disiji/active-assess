@@ -88,19 +88,19 @@ class BetaBernoulli(Model):
                 return theta_hat
             
             elif reward_type == 'most_biased':
-                # maybe not 
+                # need a new model. refer to bayesian-blackbox repo on github
                 raise ValueError
             
             elif reward_type == 'least_biased':
-                # maybe not 
+                # need a new model. refer to bayesian-blackbox repo on github
                 raise ValueError
             
-            elif reward_type == 'ece':
-                # low variance estimation of ECE
-                var_plus_1 = beta.var(self._params[:, 0]+1, self._params[:, 1])
-                var_plus_0 = beta.var(self._params[:, 0], self._params[:, 1]+1)
-                E_var =  var_plus_1 * theta_hat + var_plus_0 * (1-theta_hat)
-                return (np.sqrt(self.variance - E_var)) * self._weight ** 2              
+#             elif reward_type == 'ece':
+#                 # low variance estimation of ECE
+#                 var_plus_1 = beta.var(self._params[:, 0]+1, self._params[:, 1])
+#                 var_plus_0 = beta.var(self._params[:, 0], self._params[:, 1]+1)
+#                 E_var =  var_plus_1 * theta_hat + var_plus_0 * (1-theta_hat)
+#                 return (np.sqrt(self.variance - E_var)) * self._weight ** 2              
                 
             elif reward_type == 'groupwise_accuracy':
                 var_plus_1 = beta.var(self._params[:, 0]+1, self._params[:, 1])

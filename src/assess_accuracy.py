@@ -11,7 +11,7 @@ import numpy as np
 from tqdm import tqdm
 LOG_FREQ = 10
 output_dir = pathlib.Path("../output")
-RUNS = 100
+
 
 def select_and_label(dataset: 'Dataset', sample_method: str, prior=None, weighted=False, topk=1) -> np.ndarray:
 
@@ -27,6 +27,7 @@ def select_and_label(dataset: 'Dataset', sample_method: str, prior=None, weighte
     sample_fct = SAMPLE_CATEGORY[sample_method]
 
     idx = 0
+    mpe_log[0] = model.mpe
     while idx < dataset_len:
         if sample_method == 'ts':
             reward = model.reward(reward_type=args.metric)
@@ -49,7 +50,9 @@ def select_and_label(dataset: 'Dataset', sample_method: str, prior=None, weighte
 def main():
     
     if args.dataset_name == 'imagenet':
-        RUNS = 10
+        RUNS = 50
+    else:
+        RUNS = 1000
                                   
     experiment_name = '%s_groupby_%s_top%d_pseudocount%.2f' % (args.dataset_name, args.group_method, args.topk, args.pseudocount)
     if not (output_dir /args.metric).is_dir():

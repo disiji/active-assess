@@ -98,11 +98,11 @@ class Dataset:
         labels = array[:, 0].astype(np.int)
         scores = array[:, 1:].astype(np.float)
         return cls(labels, scores, dataset_name)
-
-    @property
-    def confusion_probs(self) -> np.ndarray:# use labels, grouped by predicted class
-        arr = confusion_matrix(self.labels, self.predictions).transpose()
-        return arr / arr.sum(axis=-1, keepdims=True)
+    
+    
+    def confusion_probs(self, normalize='pred') -> np.ndarray:# use labels, grouped by predicted class
+        arr = confusion_matrix(self.labels, self.predictions, normalize=normalize).transpose()
+        return arr
 
     @property
     def confusion_prior(self) -> np.ndarray:
@@ -125,57 +125,28 @@ class SuperclassDataset(Dataset):
         self.labels = labels
         self.scores = scores
         self.indices = np.arange(labels.shape[0])
-        self._add_information(dataset_name)
         
         self.superclass_lookup = superclass_lookup
         self.reverse_lookup = defaultdict(list)
         for key, value in self.superclass_lookup.items():
             self.reverse_lookup[value].append(key)
-        # group with superclass
-        self.categories = np.array([self.superclass_lookup[class_idx] for class_idx in self.predictions])
-        self.num_groups = len(self.reverse_lookup)
-        # compute superclass scores
-        self.superclass_scores = np.zeros((labels.shape[0], self.num_groups))
-        for superclass_idx in range(self.num_groups):
+        self.num_classes = len(self.reverse_lookup)
+        
+        # update lables
+        self.labels = np.array([self.superclass_lookup[class_idx] for class_idx in self.predictions])
+        # update scores
+        self.superclass_scores = np.zeros((labels.shape[0], self.num_classes))
+        for superclass_idx in range(self.num_classes):
             self.superclass_scores[:, superclass_idx] = np.sum(self.scores[:, self.reverse_lookup[superclass_idx]], axis=1)
-        # compute superclass scores
-        self._add_group_information()
-
-    def enqueue(self) -> List[Deque[int]]:
-        # group by self.categories
-        queues = [deque() for _ in range(self.num_groups)]
-        for index, label, superclass_score, category in zip(self.indices, self.labels, self.superclass_scores, self.categories):
-            queues[self.superclass_lookup[category]].append({
-                                'index': index, # might be used when logits need to be queries from a different file
-                                'label': self.superclass_lookup[label], 
-                                'score': superclass_score})
-        return queues
+        self.scores = self.superclass_scores
         
-    def shuffle(self, random_state=0) -> None:
-        # To make sure the rows still align we shuffle an array of indices, and use these to
-        # re-order the dataset's attributes.
-        # Need to group before shuffle
-        shuffle_ids = np.arange(self.labels.shape[0])
-        shuffle_ids = shuffle(shuffle_ids, random_state=random_state)
-        self.labels = self.labels[shuffle_ids]
-        self.scores = self.scores[shuffle_ids]
-        self.indices = self.indices[shuffle_ids]
-        self.categories = self.categories[shuffle_ids]
-        self.superclass_scores = self.superclass_scores[shuffle_ids]
+        self._add_information('superclass_' + dataset_name)
         
-    def generate(self) -> Iterable[Tuple[int, int]]:
-        for label, prediction in zip(self.labels, self.predictions):
-            if label == prediction:
-                entry = 0
-            elif self.superclass_lookup[label] == self.superclass_lookup[prediction]:
-                entry = 1
-            else:
-                entry = 2
-            yield prediction, entry
-            
-    def group(self) -> None:
-        return
-
+    def _add_information(self, dataset_name):
+        self.dataset_name = dataset_name
+        self.accuracy = (self.labels == self.predictions).mean()
+        self.ece = eval_ece(np.max(self.scores,axis=-1), (self.labels == self.predictions), NUM_BINS)
+        
     @classmethod
     def load_from_text(cls, dataset_name: str, superclass_lookup: Dict[int, int]) -> 'Dataset':
         fname = DATAFILE_DICT[dataset_name]
@@ -183,17 +154,3 @@ class SuperclassDataset(Dataset):
         labels = array[:, 0].astype(np.int)
         scores = array[:, 1:].astype(np.float)
         return cls(labels, scores, dataset_name, superclass_lookup)    
-    
-    @property
-    def confusion_probs(self) -> np.ndarray:
-        arr = confusion_matrix([self.superclass_lookup[i] for i in self.labels], 
-                               [self.superclass_lookup[i] for i in self.predictions]).transpose()
-        return arr / arr.sum(axis=-1, keepdims=True)
-
-
-    @property
-    def confusion_prior(self) -> np.ndarray:
-        arr = np.zeros((self.num_groups, self.num_groups))
-        for i in range(self.num_groups):
-            arr[i] = self.superclass_scores[self.categories == i].sum(axis=0) / sum(self.categories == i)
-        return arr

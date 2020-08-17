@@ -3,7 +3,7 @@ import pathlib
 import random
 from collections import deque
 from typing import List, Dict, Tuple, Union
-from data import Dataset
+from data import Dataset, SuperclassDataset
 from data_utils import *
 from models import BetaBernoulli
 import matplotlib.pyplot as plt
@@ -14,9 +14,9 @@ from sampling import *
 LOG_FREQ = 10
 output_dir = pathlib.Path("../output/difference_random_2_groups")
 
-RUNS = 100
+RUNS = 1000
 random.seed(1234)
-rope_width = 0.03
+rope_width = 0.05
 
 def rope(alpha0, alpha1, beta0, beta1):
     num_samples = 10000
@@ -64,8 +64,11 @@ def select_and_label(dataset: 'Dataset', sample_method: str, budget: int, group0
             'rope_eval': rope_eval}
 
 def main():
-    
-    experiment_name = '%s_groupby_%s_pseudocount%.2f' % (args.dataset_name, args.group_method, args.pseudocount)
+    if args.group0 != -1 and args.group1!= -1:
+        experiment_name = '%s_groupby_%s_group0_%d_group1_%d_pseudocount%.2f' % (args.dataset_name, args.group_method,\
+                                                                                 args.group0, args.group1, args.pseudocount)
+    else:
+        experiment_name = '%s_groupby_%s_pseudocount%.2f' % (args.dataset_name, args.group_method, args.pseudocount)
     if not (output_dir / experiment_name).is_dir():
         (output_dir / experiment_name).mkdir()
     method_list = ['random_arm_symmetric', 'random_data_symmetric', \
@@ -75,9 +78,17 @@ def main():
     samples = {}
     mpe_log = {}
     rope_eval = {}
-   
-    dataset = Dataset.load_from_text(args.dataset_name)
-    dataset.group(group_method = args.group_method)  
+  
+    
+    if args.dataset_name == 'superclass_cifar100':
+        superclass = True
+        dataset_name = 'cifar100'
+        dataset = SuperclassDataset.load_from_text('cifar100', CIFAR100_SUPERCLASS_LOOKUP)
+    else:
+        superclass = False
+        dataset = Dataset.load_from_text(args.dataset_name)
+        
+    dataset.group(group_method = args.group_method)    
     deques = dataset.enqueue()
     
     UNIFORM_PRIOR = np.ones((dataset.num_groups, 2)) / 2
@@ -101,20 +112,35 @@ def main():
     
     for r in tqdm(range(RUNS)):
         
-        dataset = Dataset.load_from_text(args.dataset_name)
+        if args.dataset_name == 'superclass_cifar100':
+            superclass = True
+            dataset_name = 'cifar100'
+            dataset = SuperclassDataset.load_from_text('cifar100', CIFAR100_SUPERCLASS_LOOKUP)
+        else:
+            superclass = False
+            dataset = Dataset.load_from_text(args.dataset_name)
+        
         dataset.group(group_method = args.group_method)
         dataset.shuffle(r)
 
         tmp = np.arange(dataset.num_groups)
         random.Random(r).shuffle(tmp)
-        group0 = tmp[0]
-        group1 = tmp[1]
+        if args.group0 == -1:
+            group0 = tmp[0]
+        else:
+            group0 = args.group0
+        if args.group1 == -1:
+            group1 = tmp[1]
+        else:
+            group1 = args.group1
+            
         budget = len(deques[group0]) + len(deques[group1])  
         delta = dataset.accuracy_k[group0] - dataset.accuracy_k[group1]
         
         configs[r] = np.array([group0, group1, budget, delta])
         
         for method_name in method_list:
+            
             prior, sample_method, weighted = config_dict[method_name]
             output = select_and_label(dataset, sample_method=sample_method, budget=budget, group0=group0, group1=group1,
                                       prior=prior, weighted=weighted)  
@@ -135,6 +161,8 @@ if __name__ == '__main__':
     parser.add_argument('dataset_name', type=str, default='cifar100')
     parser.add_argument('group_method', type=str, default='predicted_class')
     parser.add_argument('pseudocount', type=float, default=2)
+    parser.add_argument('group0', type=int, default=-1)
+    parser.add_argument('group1', type=int, default=-1)
     
     args, _ = parser.parse_known_args()
     main()

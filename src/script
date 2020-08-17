@@ -32,7 +32,8 @@ do
         done
     done
 done
-declare -a GroupMethod=("predicted_class" "score_equal_width" "score_equal_size")
+declare -a DatasetNames=("cifar100" "dbpedia" "20newsgroup" "svhn" "imagenet")
+declare -a GroupMethod=("predicted_class" "score_equal_size")
 declare -a MetricList=("groupwise_accuracy")
 for metric in "${MetricList[@]}"
 do
@@ -48,12 +49,14 @@ do
         done
     done
 done
-declare -a DatasetNames=("cifar100" "dbpedia" "20newsgroup" "svhn")
+declare -a DatasetNames=("cifar100" "dbpedia" "20newsgroup" "svhn" "imagenet" "superclass_cifar100")
 for dataset_name in "${DatasetNames[@]}"
 do
     python assess_difference.py --dataset_name $dataset_name \
                               --group_method predicted_class \
-                              --pseudocount 1 &
+                              --pseudocount 2 \
+                              --group0 -1\
+                              --group1 -1&
 done
 
 
@@ -79,7 +82,7 @@ done
 
 
 declare -a DatasetNames=("cifar100" "dbpedia" "20newsgroup" "svhn" "imagenet")
-declare -a GroupMethod=("predicted_class" "score_equal_width" "score_equal_size")
+declare -a GroupMethod=("score_equal_size")
 declare -a MetricList=("groupwise_accuracy")
 for dataset_name in "${DatasetNames[@]}"
 do
@@ -94,4 +97,27 @@ do
                                            --topk False &
         done
     done
+done
+
+
+declare -a DatasetNames=("cifar100" "dbpedia" "20newsgroup" "svhn" "imagenet" )
+for dataset_name in "${DatasetNames[@]}"
+do
+    python eval_ts_accuracy.py --dataset_name $dataset_name \
+                                       --metric groupwise_accuracy \
+                                       --group_method predicted_class \
+                                       --pseudocount 2 \
+                                       --topk False &
+done
+
+
+
+declare -a DatasetNames=("superclass_cifar100")
+for dataset_name in "${DatasetNames[@]}"
+do
+    python assess_difference.py --dataset_name $dataset_name \
+                              --group_method predicted_class \
+                              --pseudocount 2 \
+                              --group0 -1\
+                              --group1 -1&
 done
