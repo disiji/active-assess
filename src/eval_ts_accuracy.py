@@ -86,6 +86,7 @@ def main():
     l2_error = {}
     l2_ece = {}
     l1_ece = {}
+    ece = {}
     for method_name in method_list:
         error = mpe_log[method_name]-ground_truth['accuracy_k'][np.newaxis,np.newaxis,:]
         error[np.isnan(error)] = 0
@@ -96,11 +97,14 @@ def main():
         l2_ece[method_name] = np.inner((np.abs(error)**2), ground_truth['weight_k'])
         l1_ece[method_name] = np.inner((np.abs(error)), ground_truth['weight_k'])
         
+        offset = mpe_log[method_name]-ground_truth['confidence_k'][np.newaxis,np.newaxis,:]
+        ece[method_name] = np.inner((np.abs(offset)), ground_truth['weight_k'])
+        
     pickle.dump(ground_truth, open(output / experiment_name / "ground_truth.pkl", "wb"))  
     pickle.dump(l2_error, open(output / experiment_name / "l2_error.pkl", "wb")) 
     pickle.dump(l2_ece, open(output / experiment_name / "l2_ece.pkl", "wb"))
-    print('DUMPING L1 ECE')
     pickle.dump(l1_ece, open(output / experiment_name / "l1_ece.pkl", "wb"))
+    pickle.dump(ece, open(output / experiment_name / "ece.pkl", "wb"))
         
         
     if args.metric in ['most_accurate', 'least_accurate']:

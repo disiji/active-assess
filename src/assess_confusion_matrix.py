@@ -60,7 +60,7 @@ def main():
     # np.fill_diagonal(costs, 0)
     
     UNIFORM_PRIOR = np.ones((dataset.num_groups, dataset.num_groups)) / dataset.num_groups 
-    INFORMED_PRIOR = dataset.confusion_prior()
+    INFORMED_PRIOR = dataset.confusion_prior
     method_list = ['random_arm', 'random_data', 'random_arm_informed', 'random_data_informed', 'ts_uniform', 
                    'ts_informed']
     config_dict = {
