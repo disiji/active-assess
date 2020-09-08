@@ -4,9 +4,9 @@
 declare -a DatasetNames=("cifar100" "dbpedia" "20newsgroup" "svhn")
 for dataset_name in "${DatasetNames[@]}"
 do
-    for run_start in {0..100..10}
+    for run_start in {0..1000..100}
     do
-        run_end=$((run_start+10))
+        run_end=$((run_start+100))
         python assess_confusion_matrix.py --dataset_name $dataset_name --superclass False --run_start $run_start --run_end $run_end --pseudocount 1 --topk 1 &
     done
 done
