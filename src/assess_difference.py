@@ -11,7 +11,7 @@ import numpy as np
 from tqdm import tqdm
 from sampling import *
 
-LOG_FREQ = 10
+LOG_FREQ = 1
 output_dir = pathlib.Path("../output/difference_random_2_groups")
 
 RUNS = 1000
