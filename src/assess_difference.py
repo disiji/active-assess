@@ -14,7 +14,6 @@ from sampling import *
 LOG_FREQ = 1
 output_dir = pathlib.Path("../output/difference_random_2_groups")
 
-RUNS = 1000
 random.seed(1234)
 rope_width = 0.05
 
@@ -64,11 +63,7 @@ def select_and_label(dataset: 'Dataset', sample_method: str, budget: int, group0
             'rope_eval': rope_eval}
 
 def main():
-    if args.group0 != -1 and args.group1!= -1:
-        experiment_name = '%s_groupby_%s_group0_%d_group1_%d_pseudocount%.2f' % (args.dataset_name, args.group_method,\
-                                                                                 args.group0, args.group1, args.pseudocount)
-    else:
-        experiment_name = '%s_groupby_%s_pseudocount%.2f' % (args.dataset_name, args.group_method, args.pseudocount)
+    experiment_name = '%s_groupby_%s_pseudocount%.2f' % (args.dataset_name, args.group_method, args.pseudocount)
     if not (output_dir / experiment_name).is_dir():
         (output_dir / experiment_name).mkdir()
     method_list = ['random_arm_symmetric', 'random_data_symmetric', \
@@ -90,6 +85,8 @@ def main():
         
     dataset.group(group_method = args.group_method)    
     deques = dataset.enqueue()
+        
+    RUNS = int(dataset.num_groups * (dataset.num_groups - 1)  / 2)
     
     UNIFORM_PRIOR = np.ones((dataset.num_groups, 2)) / 2
     INFORMED_PRIOR = np.array([dataset.confidence_k, 1 - dataset.confidence_k]).T
@@ -111,6 +108,15 @@ def main():
     configs = np.zeros((RUNS, 4))
     
     for r in tqdm(range(RUNS)):
+        # find the pair of groups to compare
+        if r == 0:
+            group0, group1 = 0, 1
+        else:
+            if group1 == dataset.num_groups - 1:
+                group0 += 1
+                group1 = group0 + 1
+            else:
+                group1 += 1            
         
         if args.dataset_name == 'superclass_cifar100':
             superclass = True
@@ -122,17 +128,7 @@ def main():
         
         dataset.group(group_method = args.group_method)
         dataset.shuffle(r)
-
-        tmp = np.arange(dataset.num_groups)
-        random.Random(r).shuffle(tmp)
-        if args.group0 == -1:
-            group0 = tmp[0]
-        else:
-            group0 = args.group0
-        if args.group1 == -1:
-            group1 = tmp[1]
-        else:
-            group1 = args.group1
+            
             
         budget = len(deques[group0]) + len(deques[group1])  
         delta = dataset.accuracy_k[group0] - dataset.accuracy_k[group1]
@@ -161,8 +157,6 @@ if __name__ == '__main__':
     parser.add_argument('dataset_name', type=str, default='cifar100')
     parser.add_argument('group_method', type=str, default='predicted_class')
     parser.add_argument('pseudocount', type=float, default=2)
-    parser.add_argument('group0', type=int, default=-1)
-    parser.add_argument('group1', type=int, default=-1)
     
     args, _ = parser.parse_known_args()
     main()

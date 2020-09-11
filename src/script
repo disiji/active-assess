@@ -49,14 +49,12 @@ do
         done
     done
 done
-declare -a DatasetNames=("cifar100" "dbpedia" "20newsgroup" "svhn" "imagenet" "superclass_cifar100")
+declare -a DatasetNames=("dbpedia" "20newsgroup" "svhn" "superclass_cifar100")
 for dataset_name in "${DatasetNames[@]}"
 do
     python assess_difference.py --dataset_name $dataset_name \
                               --group_method predicted_class \
-                              --pseudocount 2 \
-                              --group0 -1\
-                              --group1 -1&
+                              --pseudocount 2&
 done
 
 
@@ -108,16 +106,4 @@ do
                                        --group_method predicted_class \
                                        --pseudocount 2 \
                                        --topk False &
-done
-
-
-
-declare -a DatasetNames=("superclass_cifar100")
-for dataset_name in "${DatasetNames[@]}"
-do
-    python assess_difference.py --dataset_name $dataset_name \
-                              --group_method predicted_class \
-                              --pseudocount 2 \
-                              --group0 -1\
-                              --group1 -1&
 done
