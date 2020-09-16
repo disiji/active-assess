@@ -49,10 +49,7 @@ def select_and_label(dataset: 'Dataset', sample_method: str, prior=None, weighte
 
 def main():
     
-    if args.dataset_name == 'imagenet':
-        RUNS = 50
-    else:
-        RUNS = 1000
+    RUNS = 1000
                                   
     experiment_name = '%s_groupby_%s_top%d_pseudocount%.2f' % (args.dataset_name, args.group_method, args.topk, args.pseudocount)
     if not (output_dir /args.metric).is_dir():
