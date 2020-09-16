@@ -83,7 +83,7 @@ do
     do
         for topk in "${TopkList[@]}"
         do
-            python eval_ts_accuracy.py --dataset_name $dataset_name \
+            python eval_accuracy.py --dataset_name $dataset_name \
                                        --metric $metric \
                                        --group_method predicted_class \
                                        --pseudocount 2 \
@@ -103,7 +103,7 @@ do
     do
         for group_method in "${GroupMethod[@]}"
         do
-            python eval_ts_accuracy.py --dataset_name $dataset_name \
+            python eval_accuracy.py --dataset_name $dataset_name \
                                            --metric $metric \
                                            --group_method $group_method \
                                            --pseudocount 2 \
@@ -112,3 +112,13 @@ do
     done
 done
 
+
+declare -a DatasetNames=("cifar100" "dbpedia" "20newsgroup" "svhn")
+for dataset_name in "${DatasetNames[@]}"
+do
+    python eval_confusion.py --dataset_name $dataset_name &
+done
+
+
+
+python eval_differnece.py

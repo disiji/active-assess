@@ -140,35 +140,3 @@ for i in CIFAR100_SUPERCLASS_LOOKUP:
     j = CIFAR100_SUPERCLASSES.index(j)
     tmp[i] = j
 CIFAR100_SUPERCLASS_LOOKUP = tmp
-############################################################################
-import warnings
-warnings.filterwarnings("ignore")
-
-def eval_ece(confidences: List[float], observations: List[bool], num_bins=NUM_BINS):
-    """
-    Evaluate ECE given a list of samples with equal-width binning.
-    :param confidences: List[float]
-        A list of prediction scores.
-    :param observations: List[bool]
-        A list of boolean observations.
-    :param num_bins: int
-        The number of bins used to estimate ECE. Default: 10
-    :return: float
-    """
-    confidences = np.array(confidences)
-    observations = np.array(observations) * 1.0
-    bins = np.linspace(0, 1, num_bins + 1)
-    digitized = np.digitize(confidences, bins[1:-1])
-
-    w = np.array([(digitized == i).sum() for i in range(num_bins)])
-    w = w / sum(w)
-
-    with warnings.catch_warnings():
-        warnings.simplefilter('ignore')
-        confidence_bins = np.array([confidences[digitized == i].mean() for i in range(num_bins)])
-        accuracy_bins = np.array([observations[digitized == i].mean() for i in range(num_bins)])
-    confidence_bins[np.isnan(confidence_bins)] = 0
-    accuracy_bins[np.isnan(accuracy_bins)] = 0
-    diff = np.absolute(confidence_bins - accuracy_bins)
-    ece = np.inner(diff, w)
-    return ece

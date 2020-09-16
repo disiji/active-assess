@@ -9,8 +9,11 @@ from sampling import *
 from models import BetaBernoulli
 import numpy as np
 from tqdm import tqdm
+
 LOG_FREQ = 10
+RUNS = 1000 
 output_dir = pathlib.Path("../output")
+random.seed(1234)
 
 
 def select_and_label(dataset: 'Dataset', sample_method: str, prior=None, weighted=False, topk=1) -> np.ndarray:
@@ -47,10 +50,9 @@ def select_and_label(dataset: 'Dataset', sample_method: str, prior=None, weighte
 
     return sampled_indices,  mpe_log
 
+
 def main():
-    
-    RUNS = 1000
-                                  
+                 
     experiment_name = '%s_groupby_%s_top%d_pseudocount%.2f' % (args.dataset_name, args.group_method, args.topk, args.pseudocount)
     if not (output_dir /args.metric).is_dir():
         (output_dir /args.metric).mkdir()

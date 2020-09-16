@@ -14,14 +14,8 @@ from utils import mean_reciprocal_rank
 import pickle
 
 LOG_FREQ = 10
-method_list = ['random_arm', 'random_data', 'random_arm_informed', 'random_data_informed', 'ts_uniform', 'ts_informed']
-method_format = {'random_arm': ('Random Arm', 'b', '.', '--'), 
-                 'random_data': ('Random Data', 'g', '^', '--'), 
-                 'random_arm_informed': ('Random Arm Informed', 'b', '.', '-'), 
-                 'random_data_informed': ('Random Data Informed', 'g', '^', '-'), 
-                 'ts_uniform': ('TS Symmetric', 'k', '*', '-'), 
-                 'ts_informed': ('TS Informed', 'r', '+', '-'),
-                }
+# method_list = ['random_arm', 'random_data', 'random_arm_informed', 'random_data_informed', 'ts_uniform', 'ts_informed']
+method_list = ['random_data', 'random_data_informed', 'ts_informed']
 DATASET_LIST = ['cifar100', 'dbpedia', '20newsgroup', 'svhn', 'imagenet'] #'imagenet', 
 
 
@@ -52,6 +46,7 @@ def eval_topk(mpe_log: np.ndarray, ground_truth: list, topk: int = 1) -> Dict[st
         'mrr': np.array(mrr),
     }
 
+
 def main():
     print('SAMPLING...')
     if args.topk:
@@ -68,7 +63,6 @@ def main():
     mpe_log = {}
     # load results
     for method_name in method_list:
-        # samples[method_name] = np.load(open(output / experiment_name / ('samples_%s.npy' % method_name), 'rb'))
         mpe_log[method_name] = np.load(open(output / experiment_name / ('mpe_log_%s.npy' % method_name), 'rb'))
 
     
@@ -105,7 +99,7 @@ def main():
     pickle.dump(l2_ece, open(output / experiment_name / "l2_ece.pkl", "wb"))
     pickle.dump(l1_ece, open(output / experiment_name / "l1_ece.pkl", "wb"))
     pickle.dump(ece, open(output / experiment_name / "ece.pkl", "wb"))
-        
+    
         
     if args.metric in ['most_accurate', 'least_accurate']:
         print('EVAL RANKING...')
@@ -124,6 +118,7 @@ def main():
         pickle.dump(avg_num_agreement, open(output / experiment_name / "avg_num_agreement.pkl", "wb")) 
         pickle.dump(mrr, open(output / experiment_name / "mrr.pkl", "wb")) 
 
+        
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('dataset_name', type=str, default='cifar100')

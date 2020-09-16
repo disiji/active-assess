@@ -17,6 +17,8 @@ output_dir = pathlib.Path("../output/difference_random_2_groups")
 random.seed(1234)
 rope_width = 0.05
 
+
+
 def rope(alpha0, alpha1, beta0, beta1):
     num_samples = 10000
     theta_0 = np.random.beta(alpha0, beta0, size=(num_samples))

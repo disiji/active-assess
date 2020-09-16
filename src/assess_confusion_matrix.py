@@ -12,6 +12,7 @@ from tqdm import tqdm
 LOG_FREQ = 10
 output_dir = pathlib.Path("../output/confusion_matrix")
 group_method = 'predicted_class'
+random.seed(1234)
 
 def select_and_label(dataset: 'Dataset', sample_method: str, budget: int, costs:np.ndarray, \
                      prior=None, weighted=False, topk:int=1) -> np.ndarray:
@@ -57,7 +58,6 @@ def main():
         (output_dir / experiment_name).mkdir()
     budget = dataset.__len__()
     costs = np.ones((dataset.num_groups, dataset.num_groups))
-    # np.fill_diagonal(costs, 0)
     
     UNIFORM_PRIOR = np.ones((dataset.num_groups, dataset.num_groups)) / dataset.num_groups 
     INFORMED_PRIOR = dataset.confusion_prior

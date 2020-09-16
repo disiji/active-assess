@@ -1,27 +1,40 @@
-import argparse
-import ctypes
-import random
-from collections import deque
-from functools import reduce
-from multiprocessing import Array
+import numpy as np
+import warnings
+warnings.filterwarnings("ignore")
+from typing import List
 
-import matplotlib.pyplot as plt
+NUM_BINS = 20
 
-from data_utils import *
-from models import BetaBernoulli
-from sampling import SAMPLE_CATEGORY
+def eval_ece(confidences: List[float], observations: List[bool], num_bins=NUM_BINS):
+    """
+    Evaluate ECE given a list of samples with equal-width binning.
+    :param confidences: List[float]
+        A list of prediction scores.
+    :param observations: List[bool]
+        A list of boolean observations.
+    :param num_bins: int
+        The number of bins used to estimate ECE. Default: 10
+    :return: float
+    """
+    confidences = np.array(confidences)
+    observations = np.array(observations) * 1.0
+    bins = np.linspace(0, 1, num_bins + 1)
+    digitized = np.digitize(confidences, bins[1:-1])
 
-COLUMN_WIDTH = 3.25  # Inches
-GOLDEN_RATIO = 1.61803398875
-FONT_SIZE = 8
+    w = np.array([(digitized == i).sum() for i in range(num_bins)])
+    w = w / sum(w)
 
-RUNS = 100
-LOG_FREQ = 100
-PRIOR_STRENGTH = 3
-HOLDOUT_RATIO = 0.1
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore')
+        confidence_bins = np.array([confidences[digitized == i].mean() for i in range(num_bins)])
+        accuracy_bins = np.array([observations[digitized == i].mean() for i in range(num_bins)])
+    confidence_bins[np.isnan(confidence_bins)] = 0
+    accuracy_bins[np.isnan(accuracy_bins)] = 0
+    diff = np.absolute(confidence_bins - accuracy_bins)
+    ece = np.inner(diff, w)
+    return ece
 
 
-#########################METRIC##########################
 def mean_reciprocal_rank(metric_val: np.ndarray,
                          ground_truth: np.ndarray,
                          mode: str) -> float:

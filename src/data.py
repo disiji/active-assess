@@ -1,4 +1,5 @@
-from data_utils import eval_ece, DATAFILE_DICT
+from data_utils import DATAFILE_DICT
+from utils import eval_ece
 import numpy as np
 from typing import List, Tuple, Dict, Deque, Iterable
 from sklearn.metrics import confusion_matrix
@@ -115,6 +116,8 @@ class Dataset:
     def predictions(self) -> np.ndarray:
         return np.argmax(self.scores, axis=-1)
 
+    
+    
     
 class SuperclassDataset(Dataset):
     def __init__(self,
