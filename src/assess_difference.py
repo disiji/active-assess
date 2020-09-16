@@ -56,8 +56,6 @@ def select_and_label(dataset: 'Dataset', sample_method: str, budget: int, group0
             alpha1, beta1 = model._params[group1]
             rope_eval[idx // LOG_FREQ] = rope(alpha0, alpha1, beta0, beta1)           
         idx += 1
-#         if idx == budget:
-#             print(alpha0, beta0, alpha1, beta1)
     return {'sampled_indices': sampled_indices,  
             'mpe_log': mpe_log,
             'rope_eval': rope_eval}
