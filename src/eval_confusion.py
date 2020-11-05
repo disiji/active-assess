@@ -56,8 +56,6 @@ def main():
     confusion_probs = confusion_probs + np.ones(confusion_probs.shape) * 1e-6
     confusion_probs = confusion_probs / confusion_probs.sum(axis=1)
     ground_truth['confusion_matrix'] = confusion_probs
-    ground_truth['confusion_matrix'] = \
-        np.load(open(output_dir / experiment_name / ('mpe_log_%s_run%d.npy' % ('ts_uniform', 0)), 'rb'))[-1]
      # initalize l2 error
     for method_name in method_list:
         l2_error[method_name] = np.zeros((RUNS, dataset.__len__() // LOG_FREQ))
