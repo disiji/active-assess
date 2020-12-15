@@ -6,7 +6,7 @@ Active Bayesian Assessment for Black-Box Classifiers
 To setup virtual environment install dependencies in `requirements.txt`:
 ```
 conda create -n active-assessment python=3.7
-source activate ctive-assessment
+source activate active-assessment
 pip install -r requirements.txt
 ```
 
